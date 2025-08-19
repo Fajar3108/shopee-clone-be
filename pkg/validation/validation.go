@@ -23,6 +23,8 @@ func init() {
 		if err := en_translations.RegisterDefaultTranslations(validate, trans); err != nil {
 			panic(err)
 		}
+
+		RegisterCustomValdiations(validate)
 	}
 }
 
@@ -52,4 +54,8 @@ func Validate[T any](ctx *fiber.Ctx, request *T) (err error) {
 	}
 
 	return nil
+}
+
+func RegisterCustomValdiations(validate *validator.Validate) {
+	validate.RegisterValidation("unique", RegisterUniqueValidation)
 }

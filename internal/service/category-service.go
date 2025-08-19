@@ -22,7 +22,7 @@ func NewCategoryService() *CategoryService {
 func (cs *CategoryService) GetAll(page, limit int) (categories *[]model.Category, err error) {
 	offset := (page - 1) * limit
 
-	result := cs.db.Order("name ASC").Offset(offset).Limit(limit).Find(&categories)
+	result := cs.db.Where("parent_id IS NULL").Order("name ASC").Offset(offset).Limit(limit).Find(&categories)
 
 	if result.Error != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, result.Error.Error())
@@ -32,7 +32,7 @@ func (cs *CategoryService) GetAll(page, limit int) (categories *[]model.Category
 }
 
 func (cs *CategoryService) GetBySlug(slug string) (category *model.Category, err error) {
-	result := cs.db.First(&category, "slug = ?", slug)
+	result := cs.db.Preload("Parent").Preload("Children").First(&category, "slug = ?", slug)
 
 	if result.Error != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, result.Error.Error())
@@ -52,10 +52,16 @@ func (cs *CategoryService) Store(categoryRequest *request.CategoryRequest) (cate
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
+	var parentId *string
+	if categoryRequest.ParentID != "" {
+		parentId = &categoryRequest.ParentID
+	}
+
 	category = &model.Category{
-		ID:   id,
-		Name: categoryRequest.Name,
-		Slug: helpers.Slug(categoryRequest.Name),
+		ID:       id,
+		ParentID: parentId,
+		Name:     categoryRequest.Name,
+		Slug:     helpers.Slug(categoryRequest.Name),
 	}
 
 	if result := cs.db.Create(category); result.Error != nil {
